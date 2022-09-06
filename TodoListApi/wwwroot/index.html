@@ -1,0 +1,113 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>To Do List</title>
+    <link href="css/style.css" rel="stylesheet" />
+</head>
+<body>
+    <h1>TodoList</h1>
+
+    <form id="frmNewTodo" class="todo-form" method="post">
+        <input id="txtTitle" type="text" placeholder="What will you do?" required />
+        <button>Add</button>
+    </form>
+
+    <div id="todoItems"></div>
+
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js" integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ=" crossorigin="anonymous"></script>
+
+    <script>
+        const apiUrl = "https://localhost:7160/api/TodoItems";
+        const divTodoItems = $("#todoItems");  //document.getElementById("todoItems)
+        let todos = [];
+
+        $("#frmNewTodo").submit(function (event) {
+            event.preventDefault();
+            let title = $("#txtTitle").val().trim();
+            $("#txtTitle").val("");
+
+            $.ajax({
+                type: "POST",
+                url: apiUrl,
+                contentType: "application/json; charset=UTF-8",
+                data: JSON.stringify({ title }),
+                success: function (data) {
+                    todos.push(data);
+                    listAll();
+                }
+            });
+        });
+
+        $.ajax({
+            type: "GET",
+            url: apiUrl,
+            success: function (data) {
+                todos = data;
+                listAll();
+            }
+        });
+
+        function listAll() {
+            todos.sort((a, b) => a.isDone - b.isDone);
+            divTodoItems.html("");
+            for (const item of todos) {
+                let divTodoItem = $("<div/>")//document.creatElement("div)
+                    .addClass("todo-item");
+
+                let inputIsDone = $("<input/>")
+                    .addClass("todo-isdone")
+                    .attr("type", "checkbox")
+                    .prop("checked", item.isDone)
+                    .change(cbChanged);
+                inputIsDone[0].todoItem = item;
+
+                let spanTitle = $("<span/>")
+                    .addClass("todo-title")
+                    .text(item.title);
+
+                let btnDelete = $("<a/>")
+                    .attr("href", "#!")
+                    .html("&times;")
+                    .addClass("todo-delete")
+                    .click(handleDelete);
+                btnDelete[0].todoItem = item;
+
+                divTodoItem.append(inputIsDone, spanTitle, btnDelete);
+                divTodoItems.append(divTodoItem);
+            }
+        }
+
+        function handleDelete(event) {
+            event.preventDefault();
+            const todoItem = this.todoItem;
+
+
+            $.ajax({
+                type: "DELETE",
+                url: apiUrl + "/" + this.todoItem.id,
+                success: function (data) {
+                    const index = todos.indexOf(todoItem);
+                    todos.splice(index, 1);
+                    listAll();
+                }
+            });
+        }
+
+        function cbChanged(event) {
+            const todoItem = this.todoItem;
+            todoItem.isDone = this.checked;
+
+            $.ajax({
+                type: "PUT",
+                url: apiUrl + "/" + todoItem.id,
+                contentType: "application/json; charset=UTF-8",
+                data: JSON.stringify(todoItem),
+                success: function (data) {
+                    listAll();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
